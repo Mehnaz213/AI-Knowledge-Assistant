@@ -6,27 +6,67 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 # Import the ChromaDB client
 import chromadb
+# Import the os module for working with files and folders
+import os
 
 #document loader and reader for the PDF file
-#path to the PDF file
-pdf_path="data/Employee_Handbook.pdf"
-# Create a PdfReader object
-reader=PdfReader(pdf_path)
-# Get all the pages from the PDF
-pages = reader.pages
+# Folder containing all PDF documents
+pdf_folder = "data"
+# Get all PDF files from the folder
+pdf_files = [
+    file
+    for file in os.listdir(pdf_folder)
+    if file.endswith(".pdf")
+]
 
-#Extracting text
-# Store the complete document text
-document_text = ""
-# Read every page in the PDF
-for page_number, page in enumerate(pages, start=1):
-    #Display the current page number
-    print(f"\n========== Page {page_number} ==========\n")
-    # Extract text
-    text = page.extract_text()
-    # Add page text to the complete document
-    document_text += text + "\n"
-    print(text)
+#Chunking
+# Store chunks from all PDF documents
+all_chunks = []
+# Store metadata for all chunks
+all_metadata = []
+# Number of characters in each chunk
+chunk_size = 200
+# Number of overlapping characters between consecutive chunks
+chunk_overlap = 50
+# Create a text splitter object
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=chunk_size,
+    chunk_overlap=chunk_overlap
+)
+
+# Read every PDF file
+for pdf_file in pdf_files:
+    # Create the complete file path
+    pdf_path = os.path.join(pdf_folder, pdf_file)
+    # Display the PDF currently being processed
+    print(f"\n========== Reading: {pdf_file} ==========\n")
+    # Create a PdfReader object
+    reader = PdfReader(pdf_path)
+    # Get all pages from the current PDF
+    pages = reader.pages
+
+    #Extracting text
+    # Store the text of the current PDF
+    pdf_text = ""
+    # Read every page in the current PDF
+    for page in pages:
+        # Extract text from the page
+        text = page.extract_text()
+        # Add the page text to the current PDF text
+        pdf_text += text + "\n"
+    # Split the current PDF into chunks
+    pdf_chunks = text_splitter.split_text(pdf_text)
+    # Add the chunks to the master list
+    all_chunks.extend(pdf_chunks)
+    # Create metadata for every chunk of this PDF
+    pdf_metadata = [
+      {"source": pdf_file}
+      for _ in pdf_chunks
+    ]
+    # Add the metadata to the master list
+    all_metadata.extend(pdf_metadata)
+    # Display the number of chunks created from this PDF
+    print(f"{pdf_file}: {len(pdf_chunks)} chunks created")
 # Display the complete document
 #print(document_text)
 
@@ -46,22 +86,10 @@ for page_number, page in enumerate(pages, start=1):
 #print(chunks)
 # Create a text splitter object
 
-#Chunking
-# Number of characters in each chunk
-chunk_size = 200
-# Number of overlapping characters between consecutive chunks
-chunk_overlap = 50
-# Create a text splitter object
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=chunk_size,
-    chunk_overlap=chunk_overlap
-)
-# Split the complete document into chunks
-chunks = text_splitter.split_text(document_text)
 # Display the total number of chunks created
-print(len(chunks))
+print(f"\nTotal Chunks Created: {len(all_chunks)}")
 # Display each chunk separately
-for chunk_number, chunk in enumerate(chunks, start=1):
+for chunk_number, chunk in enumerate(all_chunks, start=1):
     # Display the chunk number
     print(f"\n========== Chunk {chunk_number} ==========\n")
     # Display the chunk
@@ -70,7 +98,7 @@ for chunk_number, chunk in enumerate(chunks, start=1):
 # Load the sentence transformer model
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Convert all chunks into embedding vectors
-embeddings = embedding_model.encode(chunks)
+embeddings = embedding_model.encode(all_chunks)
 # Display the number of embedding vectors
 print(f"\nTotal Embeddings Created: {len(embeddings)}")
 # Display the dimension of one embedding vector
@@ -90,11 +118,16 @@ except:
 collection = client.get_or_create_collection(
     name="employee_handbook"
 )
-# Store the chunks and embeddings in the collection
+# Store all chunks, embeddings, and metadata in ChromaDB
 collection.add(
-    ids=[str(i) for i in range(len(chunks))],
-    documents=chunks,
-    embeddings=embeddings.tolist()
+    # Create a unique ID for every chunk
+    ids=[str(i) for i in range(len(all_chunks))],
+    # Store all document chunks
+    documents=all_chunks,
+    # Store the embedding vectors
+    embeddings=embeddings.tolist(),
+    # Store the metadata for every chunk
+    metadatas=all_metadata
 )
 # Display a success message
 print("\nEmbeddings successfully stored in ChromaDB!")
