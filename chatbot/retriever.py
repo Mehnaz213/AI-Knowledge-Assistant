@@ -2,11 +2,13 @@
 from sentence_transformers import SentenceTransformer
 # Import the ChromaDB client
 import chromadb
+# Import the reranking function
+from chatbot.reranker import rerank_chunks
 
 # Load the same embedding model used while building the database
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 # Number of most relevant chunks to retrieve
-TOP_K = 2
+TOP_K = 5
 # Connect to the existing ChromaDB database
 client = chromadb.PersistentClient(path="vector_db")
 # Open the existing collection
@@ -50,6 +52,12 @@ def retrieve_context(query, source=None):
     
     # Extract the retrieved chunks
     retrieved_chunks = results["documents"][0]
+    # Rerank the retrieved chunks using the Cross Encoder
+    retrieved_chunks = rerank_chunks(
+      query,
+      retrieved_chunks
+    )
+    
     # Extract the metadata of the retrieved chunks
     retrieved_metadata = results["metadatas"][0]
     # Combine all chunks into one context
