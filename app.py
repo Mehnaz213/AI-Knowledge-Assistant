@@ -45,8 +45,7 @@ while True:
         break
     # Retrieve context only from the HR Policy Manual
     context, retrieved_metadata = retrieve_context(
-       user_input,
-       source="HR_Policy_Manual.pdf"
+       user_input
     )
     # Add the retrieved context and the user's question to the conversation history
     chat_history.append(

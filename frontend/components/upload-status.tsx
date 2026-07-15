@@ -1,73 +1,57 @@
 'use client';
-// Import icons used to display different upload states
+
 import {
     CheckCircle2,
     Loader2,
     AlertCircle,
 } from 'lucide-react';
 
-// Define the data this component receives from page.tsx
 interface UploadStatusProps {
-
-    // Name of the uploaded PDF
     fileName?: string;
-
-    // Current upload status
-    status:
-    | 'idle'
-    | 'processing'
-    | 'success'
-    | 'error';
-
-    // Number of chunks created after processing
+    status: 'idle' | 'processing' | 'success' | 'error';
     chunkCount?: number;
-
-    // Error message if upload fails
     error?: string;
 }
 
-// Create the UploadStatus component
 export default function UploadStatus({
-
     fileName,
     status,
     chunkCount,
     error,
-
 }: UploadStatusProps) {
 
-    // Don't display anything when there is no upload activity
     if (status === 'idle') return null;
 
     return (
 
-        // Floating notification positioned at the bottom-right corner
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 page-fade">
 
-            <div className="glass-elevated rounded-lg p-4 max-w-sm shadow-2xl">
+            <div className="glass-elevated neon-border rounded-2xl p-5 w-[360px] shadow-2xl hover-lift">
 
-                {/* Show while the PDF is being processed */}
                 {status === 'processing' && (
 
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-4">
 
-                        {/* Loading icon */}
-                        <Loader2 className="w-5 h-5 text-cyan-400 animate-spin flex-shrink-0 mt-0.5" />
+                        <Loader2 className="w-6 h-6 text-cyan-400 animate-spin mt-0.5 flex-shrink-0" />
 
                         <div>
 
-                            <p className="text-sm font-semibold text-foreground">
+                            <h3 className="font-semibold">
+
                                 Processing PDF
-                            </p>
 
-                            {/* Uploaded filename */}
-                            <p className="text-xs text-muted-foreground mt-1">
+                            </h3>
+
+                            <p className="text-sm text-muted-foreground mt-1 break-all">
+
                                 {fileName}
+
                             </p>
 
-                            {/* Current processing stage */}
-                            <p className="text-xs text-muted-foreground mt-1">
-                                Chunking and generating embeddings...
+                            <p className="text-xs text-cyan-400 mt-3">
+
+                                Chunking document and generating embeddings...
+
                             </p>
 
                         </div>
@@ -76,29 +60,40 @@ export default function UploadStatus({
 
                 )}
 
-                {/* Show when upload is successful */}
                 {status === 'success' && (
 
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-4">
 
-                        {/* Success icon */}
-                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-6 h-6 text-green-400 mt-0.5 flex-shrink-0" />
 
                         <div>
 
-                            {/* Success message */}
-                            <p className="text-sm font-semibold text-foreground">
-                                ✅ {fileName} indexed successfully.
+                            <h3 className="font-semibold text-green-400">
+
+                                Upload Successful
+
+                            </h3>
+
+                            <p className="text-sm mt-1 break-all">
+
+                                {fileName}
+
                             </p>
 
-                            {/* Number of chunks created */}
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {chunkCount} chunks created.
-                            </p>
+                            {chunkCount !== undefined && (
 
-                            {/* Ready message */}
-                            <p className="text-xs text-green-400 font-medium mt-2">
+                                <p className="text-xs text-muted-foreground mt-2">
+
+                                    {chunkCount} document chunks indexed successfully.
+
+                                </p>
+
+                            )}
+
+                            <p className="text-xs text-green-400 mt-3 font-medium">
+
                                 Ready for querying.
+
                             </p>
 
                         </div>
@@ -107,24 +102,23 @@ export default function UploadStatus({
 
                 )}
 
-                {/* Show when an error occurs */}
                 {status === 'error' && (
 
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-4">
 
-                        {/* Error icon */}
-                        <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="w-6 h-6 text-red-400 mt-0.5 flex-shrink-0" />
 
                         <div>
 
-                            <p className="text-sm font-semibold text-foreground">
+                            <h3 className="font-semibold text-red-400">
+
                                 Upload Failed
-                            </p>
 
-                            {/* Error message */}
-                            <p className="text-xs text-red-400 mt-1">
+                            </h3>
 
-                                {error || 'An error occurred while processing the PDF'}
+                            <p className="text-sm text-red-300 mt-2 break-words">
+
+                                {error || 'An unexpected error occurred while processing the PDF.'}
 
                             </p>
 

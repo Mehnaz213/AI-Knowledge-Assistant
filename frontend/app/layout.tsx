@@ -1,69 +1,90 @@
-// Import the Analytics component from the Vercel Analytics package
+// Import Vercel Analytics (enabled only in production)
 import { Analytics } from '@vercel/analytics/next'
-// Import only the TypeScript types Metadata and Viewport from Next.js
+
+// Import Next.js metadata types
 import type { Metadata, Viewport } from 'next'
-// Import the global stylesheet for the entire application
+
+// Import global styles
 import './globals.css'
 
-// Export metadata information about the website
+// Import Theme and Authentication providers
+import { ThemeProvider } from '@/lib/theme-context'
+import { AuthProvider } from '@/lib/auth-context'
+
+// Website metadata
 export const metadata: Metadata = {
-  title: 'Enterprise AI Knowledge Assistant',
-  description: 'Premium RAG chatbot with vector database integration, cross-encoder reranking, and intelligent document retrieval',
-  // Configure website icons
+  title: 'RAGent AI',
+  description:
+    'Enterprise Knowledge Assistant powered by Retrieval-Augmented Generation (RAG), semantic search, vector embeddings and intelligent document retrieval.',
+
   icons: {
-    // List of favicon icons
     icon: [
       {
-        // Light mode favicon
         url: '/icon-light-32x32.png',
         media: '(prefers-color-scheme: light)',
       },
       {
-        // Dark mode favicon
         url: '/icon-dark-32x32.png',
         media: '(prefers-color-scheme: dark)',
       },
       {
-        // SVG favicon
         url: '/icon.svg',
         type: 'image/svg+xml',
       },
     ],
-    // Apple Touch Icon
+
     apple: '/apple-icon.png',
   },
 }
 
-// Export viewport settings
+// Browser theme colors
 export const viewport: Viewport = {
-  colorScheme: 'dark',
+  colorScheme: 'dark light',
+
   themeColor: [
     {
       media: '(prefers-color-scheme: dark)',
-      color: '#0a0e27',
+      color: '#0A1628',
+    },
+    {
+      media: '(prefers-color-scheme: light)',
+      color: '#FFFFFF',
     },
   ],
 }
 
-// Export the main layout component
+// Root Layout
 export default function RootLayout({
-  // Receive the page that should be displayed inside the layout
   children,
-  // Ensure that the children prop is read-only and cannot be modified
 }: Readonly<{
-  // Children can be any valid React element
   children: React.ReactNode
 }>) {
-  // Return the HTML structure of the application
+
   return (
-    // Root HTML element
-    <html lang="en" className="bg-background dark">
-      <body className="antialiased bg-background text-foreground">
-        {/* Render the current page */}
-        {children}
-        {/* Render Analytics only in production */}
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+
+    <html lang="en">
+
+      <body className="bg-background text-foreground antialiased page-fade">
+
+        {/* Theme Provider */}
+        <ThemeProvider>
+
+          {/* Authentication Provider */}
+          <AuthProvider>
+
+            {/* Render all pages */}
+            {children}
+
+            {/* Enable Vercel Analytics only after deployment */}
+            {process.env.NODE_ENV === 'production' && <Analytics />}
+
+          </AuthProvider>
+
+        </ThemeProvider>
+
       </body>
+
     </html>
+
   )
 }

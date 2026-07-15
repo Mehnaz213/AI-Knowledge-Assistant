@@ -1,82 +1,110 @@
 'use client';
 
-// Import the React type used for the chat reference
-import { RefObject } from 'react';
+import { useState } from "react";
+import {
+    Brain,
+    User,
+    FileText,
+    Copy,
+    Check
+} from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
-// Import a utility to display timestamps like "2 minutes ago"
-import { formatDistanceToNow } from 'date-fns';
-
-// Import icons used in the chat interface
-import { Bot, User, FileText, Clock, Brain } from 'lucide-react';
-
-// Define the structure of one chat message
 interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    timestamp: Date;
-    sources?: string[];
+
+    sources?: {
+        source: string;
+        page: number;
+    }[];
 }
 
-// Define the data this component receives from page.tsx
 interface ChatAreaProps {
     messages: Message[];
     isLoading: boolean;
-    chatEndRef: RefObject<HTMLDivElement>;
+    chatEndRef: React.RefObject<HTMLDivElement | null>;
+    onSuggestionClick: (question: string) => void;
 }
 
-// Create the ChatArea component
 export default function ChatArea({
     messages,
     isLoading,
     chatEndRef,
+    onSuggestionClick,
 }: ChatAreaProps) {
+
+    const [copiedMessage, setCopiedMessage] =
+        useState<string | null>(null);
+
+    const copyMessage = async (
+        id: string,
+        text: string
+    ) => {
+
+        await navigator.clipboard.writeText(text);
+
+        setCopiedMessage(id);
+
+        setTimeout(() => {
+            setCopiedMessage(null);
+        }, 2000);
+
+    };
+
     return (
-        // Main chat container
         <div className="flex-1 flex flex-col overflow-hidden">
 
-            {/* ================= Header ================= */}
+            <div className="flex-1 overflow-y-auto px-8 py-10 space-y-6">
 
-            {/* Display the application title and description */}
-            <div className="glass-elevated border-b border-white/10 px-8 py-6">
-                <h2 className="text-2xl font-semibold gradient-text mb-2">
-                    Enterprise AI Agent
-                </h2>
-
-                <p className="text-sm text-muted-foreground">
-                    Ask questions across your organization's knowledge base using
-                    Retrieval-Augmented Generation, semantic search,
-                    cross-encoder reranking, and conversational memory.
-                </p>
-            </div>
-
-            {/* ================= Chat Messages ================= */}
-
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-
-                {/* If there are no messages, show the welcome screen */}
                 {messages.length === 0 ? (
 
                     <div className="h-full flex items-center justify-center">
 
-                        <div className="text-center max-w-md">
+                        <div className="text-center max-w-lg">
 
-                            {/* Welcome Icon */}
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 flex items-center justify-center mx-auto mb-4">
-                                <Brain className="w-8 h-8 text-cyan-400" />
+                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-400 to-cyan-400 flex items-center justify-center mx-auto mb-4">
+                                <Brain className="w-8 h-8 text-white" />
                             </div>
 
-                            {/* Welcome Title */}
-                            <h3 className="text-xl font-semibold mb-2">
-                                Enterprise AI Agent
+                            <h3 className="text-3xl font-bold gradient-text mb-3">
+                                RAGent AI
                             </h3>
 
-                            {/* Welcome Description */}
-                            <p className="text-muted-foreground text-sm">
-                                Ask questions across your organization's knowledge base
-                                using Retrieval-Augmented Generation, semantic search,
-                                cross-encoder reranking, and conversational memory.
+                            <p className="text-muted-foreground">
+                                Ask questions about your organization's knowledge base.
                             </p>
+
+                            <p className="text-xs text-muted-foreground mt-3">
+                                Powered by Retrieval-Augmented Generation (RAG)
+                            </p>
+
+                            <div className="mt-8 text-left glass rounded-xl p-5 border border-border">
+
+                                <div className="grid gap-2">
+
+                                    {[
+                                        "Summarize the employee handbook",
+                                        "Explain the leave policy",
+                                        "Explain the dress code",
+                                        "What are the working hours?"
+                                    ].map((question) => (
+
+                                        <button
+                                            key={question}
+                                            onClick={() => onSuggestionClick(question)}
+                                            className="text-left rounded-lg border border-border px-3 py-2 hover:border-cyan-400 hover:bg-cyan-500/10 transition"
+                                        >
+                                            {question}
+                                        </button>
+
+                                    ))}
+
+                                </div>
+
+                            </div>
 
                         </div>
 
@@ -85,25 +113,25 @@ export default function ChatArea({
                 ) : (
 
                     <>
-                        {/* Loop through every message and display it */}
+
                         {messages.map((message) => (
 
                             <div
                                 key={message.id}
-                                className={`flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500 ${message.role === 'user'
-                                    ? 'justify-end'
-                                    : 'justify-start'
+                                className={`flex gap-4 ${message.role === "user"
+                                    ? "justify-end"
+                                    : "justify-start"
                                     }`}
                             >
 
-                                {/* Show AI icon for assistant messages */}
-                                {message.role === 'assistant' && (
+                                {/* Assistant Avatar */}
+                                {message.role === "assistant" && (
 
                                     <div className="flex-shrink-0">
 
                                         <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
 
-                                            <Bot className="w-5 h-5 text-white" />
+                                            <Brain className="w-5 h-5 text-white" />
 
                                         </div>
 
@@ -111,34 +139,41 @@ export default function ChatArea({
 
                                 )}
 
-                                {/* Chat Bubble */}
+                                {/* Message */}
+
                                 <div
-                                    className={`flex flex-col gap-2 max-w-2xl ${message.role === 'user'
-                                        ? 'items-end'
-                                        : 'items-start'
+                                    className={`flex flex-col gap-2 max-w-2xl ${message.role === "user"
+                                        ? "items-end"
+                                        : "items-start"
                                         }`}
                                 >
 
-                                    {/* Display the message text */}
                                     <div
-                                        className={`rounded-2xl px-4 py-3 smooth-transition ${message.role === 'user'
-                                            ? 'glass-elevated border-blue-500/20 text-foreground'
-                                            : 'glass border-white/10 text-foreground'
+                                        className={`rounded-2xl px-4 py-3 ${message.role === "user"
+                                            ? "bg-primary text-white"
+                                            : "glass border border-border text-foreground"
                                             }`}
                                     >
-                                        <p className="text-sm leading-relaxed">
-                                            {message.content}
-                                        </p>
+
+                                        <div className="prose prose-invert max-w-none prose-headings:text-white prose-p:text-gray-200 prose-strong:text-cyan-300 prose-li:text-gray-200 prose-code:text-cyan-300">
+
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {message.content}
+                                            </ReactMarkdown>
+
+                                        </div>
+
                                     </div>
 
-                                    {/* Show source documents only for AI responses */}
-                                    {message.role === 'assistant' &&
+                                    {/* Sources */}
+
+                                    {message.role === "assistant" &&
                                         message.sources &&
                                         message.sources.length > 0 && (
 
-                                            <div className="flex items-start gap-2 text-xs text-muted-foreground mt-1">
+                                            <div className="flex items-start gap-2 text-xs text-muted-foreground">
 
-                                                <FileText className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                                <FileText className="w-4 h-4 mt-0.5" />
 
                                                 <div>
 
@@ -148,17 +183,52 @@ export default function ChatArea({
 
                                                     <div className="flex flex-wrap gap-2">
 
-                                                        {/* Display every retrieved source */}
-                                                        {message.sources.map((source, idx) => (
+                                                        {(() => {
 
-                                                            <span
-                                                                key={idx}
-                                                                className="glass rounded px-2 py-1 border-white/10 text-xs"
-                                                            >
-                                                                {source}
-                                                            </span>
+                                                            const groupedSources: Record<string, number[]> = {};
 
-                                                        ))}
+                                                            message.sources.forEach((item) => {
+
+                                                                if (!groupedSources[item.source]) {
+                                                                    groupedSources[item.source] = [];
+                                                                }
+
+                                                                groupedSources[item.source].push(item.page);
+
+                                                            });
+
+                                                            return Object.entries(groupedSources).map(([file, pages]) => {
+
+                                                                const displayName = file
+                                                                    .replace(".pdf", "")
+                                                                    .replaceAll("_", " ");
+
+                                                                const url =
+                                                                    `/viewer?file=${encodeURIComponent(file)}&page=${pages[0]}`;
+
+                                                                return (
+
+                                                                    <button
+                                                                        key={file}
+                                                                        onClick={() => window.open(url, "_blank")}
+                                                                        className="glass rounded-lg px-3 py-2 border border-border hover:border-cyan-400 hover:bg-cyan-500/10 transition text-left"
+                                                                    >
+
+                                                                        <p className="font-medium text-white">
+                                                                            📄 {displayName}
+                                                                        </p>
+
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            Pages: {pages.join(", ")}
+                                                                        </p>
+
+                                                                    </button>
+
+                                                                );
+
+                                                            });
+
+                                                        })()}
 
                                                     </div>
 
@@ -168,28 +238,48 @@ export default function ChatArea({
 
                                         )}
 
-                                    {/* Display message timestamp */}
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    {/* Copy */}
+                                    <div className="flex gap-4">
+                                        {message.role === "assistant" && (
 
-                                        <Clock className="w-3 h-3" />
+                                            <button
+                                                onClick={() =>
+                                                    copyMessage(
+                                                        message.id,
+                                                        message.content
+                                                    )
+                                                }
+                                                className="flex items-center gap-2 text-xs text-cyan-400 hover:text-cyan-300 transition"
+                                            >
 
-                                        <span>
-                                            {formatDistanceToNow(
-                                                message.timestamp,
-                                                { addSuffix: true }
-                                            )}
-                                        </span>
+                                                {copiedMessage === message.id ? (
 
+                                                    <>
+                                                        <Check className="w-4 h-4" />
+                                                        Copied
+                                                    </>
+
+                                                ) : (
+
+                                                    <>
+                                                        <Copy className="w-4 h-4" />
+                                                        Copy
+                                                    </>
+
+                                                )}
+
+                                            </button>
+
+                                        )}
                                     </div>
-
                                 </div>
+                                {/* User Avatar */}
 
-                                {/* Show User icon for user messages */}
-                                {message.role === 'user' && (
+                                {message.role === "user" && (
 
                                     <div className="flex-shrink-0">
 
-                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-400 to-slate-500 flex items-center justify-center">
+                                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
 
                                             <User className="w-5 h-5 text-white" />
 
@@ -203,24 +293,21 @@ export default function ChatArea({
 
                         ))}
 
-                        {/* Show typing animation while waiting for AI */}
                         {isLoading && (
 
-                            <div className="flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                            <div className="flex gap-4">
 
-                                {/* AI Icon */}
                                 <div className="flex-shrink-0">
 
-                                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500 to-cyan-500 flex items-center justify-center">
 
-                                        <Bot className="w-5 h-5 text-white" />
+                                        <Brain className="w-5 h-5 text-white" />
 
                                     </div>
 
                                 </div>
 
-                                {/* Typing Indicator */}
-                                <div className="flex items-center gap-2 glass rounded-2xl px-4 py-3 border-white/10">
+                                <div className="glass rounded-2xl px-4 py-3 border border-border flex items-center gap-2">
 
                                     <div className="flex gap-1">
 
@@ -228,19 +315,27 @@ export default function ChatArea({
 
                                         <div
                                             className="w-2 h-2 rounded-full bg-cyan-400 typing-indicator"
-                                            style={{ animationDelay: '0.2s' }}
+                                            style={{ animationDelay: "0.2s" }}
                                         />
 
                                         <div
                                             className="w-2 h-2 rounded-full bg-cyan-400 typing-indicator"
-                                            style={{ animationDelay: '0.4s' }}
+                                            style={{ animationDelay: "0.4s" }}
                                         />
 
                                     </div>
 
-                                    <span className="text-xs text-muted-foreground ml-1">
-                                        Thinking...
-                                    </span>
+                                    <div className="flex flex-col">
+
+                                        <span className="text-sm font-medium">
+                                            Searching Knowledge Base...
+                                        </span>
+
+                                        <span className="text-xs text-muted-foreground">
+                                            Retrieving relevant documents and generating response.
+                                        </span>
+
+                                    </div>
 
                                 </div>
 
@@ -248,7 +343,6 @@ export default function ChatArea({
 
                         )}
 
-                        {/* Invisible element used for automatic scrolling */}
                         <div ref={chatEndRef} />
 
                     </>

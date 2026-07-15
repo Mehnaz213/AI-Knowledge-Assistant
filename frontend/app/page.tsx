@@ -1,223 +1,327 @@
-// Mark this file as a Client Component so it can use React Hooks and browser features
 'use client';
-// Import React Hooks
+
 import { useState, useRef, useEffect } from 'react';
+
+import { useAuth } from '@/lib/auth-context';
+
+import RoleSelection from '@/components/role-selection';
 import Sidebar from '@/components/sidebar';
 import ChatArea from '@/components/chat-area';
 import ChatInput from '@/components/chat-input';
 import UploadStatus from '@/components/upload-status';
+import ChatHistoryPage from "@/components/chat-history-page";
+import EmployeeSettingsPage from "@/components/employee-settings-page";
+import KnowledgeBasePage from "@/components/knowledge-base-page";
+import AnalyticsPage from "@/components/analytics-page";
 
-// Export the main page component
 export default function Page() {
-  // Store all chat messages
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <RoleSelection />;
+  }
+
+  return <MainInterface />;
+}
+
+function MainInterface() {
   const [messages, setMessages] = useState<
     Array<{
       id: string;
       role: 'user' | 'assistant';
       content: string;
-      timestamp: Date;
-      sources?: string[];
+      sources?: Array<{
+        source: string;
+        page: number;
+      }>;
+
+      question?: string;
     }>
   >([]);
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  // Current page shown on the screen
+  const [currentPage, setCurrentPage] =
+    useState("chat");
 
-  // Store whether the AI is generating a response
+  // Used for starting a new conversation
+  const [chatKey, setChatKey] =
+    useState(0);
+
   const [isLoading, setIsLoading] = useState(false);
 
-  // Store the current PDF upload status
   const [uploadStatus, setUploadStatus] = useState<
     'idle' | 'processing' | 'success' | 'error'
   >('idle');
 
-  // Store the uploaded PDF filename
-  const [uploadFileName, setUploadFileName] = useState<string>('');
+  const [uploadFileName, setUploadFileName] = useState('');
 
-  // Store the number of chunks created after PDF processing
-  const [uploadChunkCount, setUploadChunkCount] = useState<number>(0);
+  const [uploadError, setUploadError] = useState('');
 
-  // Store upload error messages
-  const [uploadError, setUploadError] = useState<string>('');
-
-  // Create a reference to the bottom of the chat
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Function to automatically scroll to the latest message
-  const scrollToBottom = () => {
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({
       behavior: 'smooth',
     });
-  };
-
-  // Automatically scroll whenever messages change
-  useEffect(() => {
-    scrollToBottom();
   }, [messages]);
 
-  // Function to handle sending messages
   const handleSendMessage = async (message: string) => {
-
-    // Ignore empty messages
     if (!message.trim()) return;
 
-    // Create a new user message
     const userMessage = {
       id: Date.now().toString(),
       role: 'user' as const,
       content: message,
-      timestamp: new Date(),
     };
 
-    // Add the user message to chat
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
 
-    // Show loading animation
     setIsLoading(true);
 
     try {
-      // Send the question to FastAPI
+      const token = localStorage.getItem("token");
+      console.log("Token:", token);
+      let currentConversation = conversationId;
+
+      if (!currentConversation) {
+
+        const conversationResponse = await fetch(
+          "http://127.0.0.1:8000/conversation/new",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!conversationResponse.ok) {
+          throw new Error("Failed to create conversation");
+        }
+
+        const conversationData =
+          await conversationResponse.json();
+
+        currentConversation =
+          conversationData.conversation_id;
+
+        setConversationId(currentConversation);
+      }
+      // Read JWT Token
       const response = await fetch(
         "http://127.0.0.1:8000/chat",
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+
+            Authorization: `Bearer ${token}`,
           },
+
           body: JSON.stringify({
-            question: message
-          })
+            question: message,
+            conversation_id: currentConversation
+          }),
         }
       );
-      // Check if the request was successful
+
+      if (response.status === 401) {
+
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        window.location.reload();
+
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("Failed to get AI response");
       }
-      // Convert JSON response to JavaScript object
+
       const data = await response.json();
 
-      // Create assistant message
       const aiMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant" as const,
         content: data.answer,
-        timestamp: new Date()
+        sources: data.sources,
       };
 
-      // Display AI response
-      setMessages(prev => [...prev, aiMessage]);
-    }
-    catch (error) {
-      console.error("Fetch Error:", error);
-      if (error instanceof Error) {
-        alert(error.message);
-      }
-    }
-    finally {
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setIsLoading(false);
     }
   };
-  // Function to clear all chat messages
+
   const handleClearChat = () => {
     setMessages([]);
+    setConversationId(null);
   };
 
-  // Function to upload a PDF
   const handleUploadPDF = async (file: File) => {
-    console.log("Upload function called");
-
-    // Show processing status
     setUploadStatus('processing');
-
-    // Store uploaded filename
     setUploadFileName(file.name);
-
-    // Clear previous errors
     setUploadError('');
 
     try {
-
-      // Create form data
       const formData = new FormData();
-      // Add PDF file
-      formData.append("pdf", file);
-      // Send PDF to FastAPI
+      formData.append('pdf', file);
+
+      const token = localStorage.getItem("token");
       const response = await fetch(
-        "http://localhost:8000/upload",
+        "http://127.0.0.1:8000/upload",
         {
           method: "POST",
+
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+
           body: formData,
         }
       );
 
-      // Convert response to JSON
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
       const data = await response.json();
-      // Show uploaded filename
+
       setUploadFileName(data.filename);
-      // Temporary chunk count
-      setUploadChunkCount(1);
-      // Show success
+
       setUploadStatus('success');
 
-      // Hide notification after 4 seconds
       setTimeout(() => {
         setUploadStatus('idle');
-      }, 4000);
-
-    } catch (error) {
-
-      // Store error message
-      setUploadError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to process PDF'
-      );
-
-      // Show error status
+      }, 3000);
+    } catch (err) {
       setUploadStatus('error');
 
-      // Hide notification after 4 seconds
+      setUploadError(
+        err instanceof Error ? err.message : 'Upload failed'
+      );
+
       setTimeout(() => {
         setUploadStatus('idle');
-      }, 4000);
+      }, 3000);
     }
   };
 
-  // Return the complete page UI
   return (
-
-    // Main application container
     <div className="flex h-screen bg-background dark">
-
-      {/* Sidebar */}
       <Sidebar
+        currentPage={currentPage}
+        onPageChange={setCurrentPage}
         onClearChat={handleClearChat}
         onUploadPDF={handleUploadPDF}
+        onNewChat={() => {
+          setMessages([]);
+          setConversationId(null);
+          setChatKey(prev => prev + 1);
+          setCurrentPage("chat");
+        }}
       />
 
-      {/* Chat Section */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col min-h-0">
 
-        {/* Display chat messages */}
-        <ChatArea
-          messages={messages}
-          isLoading={isLoading}
-          chatEndRef={chatEndRef}
-        />
+        {currentPage === "chat" && (
+          <>
+            <ChatArea
+              key={chatKey}
+              messages={messages}
+              isLoading={isLoading}
+              chatEndRef={chatEndRef}
+              onSuggestionClick={handleSendMessage}
+            />
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              isLoading={isLoading}
+            />
+          </>
+        )}
 
-        {/* Message input */}
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          isLoading={isLoading}
-        />
+        {currentPage === "history" && (
+          <ChatHistoryPage
+            onOpenConversation={async (id) => {
+
+              const token =
+                localStorage.getItem("token");
+
+              const response = await fetch(
+
+                `http://127.0.0.1:8000/conversation/${id}`,
+
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`
+                  }
+                }
+
+              );
+
+              if (!response.ok) return;
+
+              const data = await response.json();
+
+              console.log("Backend Messages:", data.messages);
+
+              data.messages.forEach((m: any) => {
+                console.log(
+                  "Timestamp from backend:",
+                  m.timestamp,
+                  "Parsed:",
+                  "Now:",
+                  new Date()
+                );
+              });
+              setConversationId(data.id);
+              console.log(data.messages);
+              setMessages(
+
+                data.messages.map((m: any, index: number) => ({
+
+                  id: index.toString(),
+
+                  role: m.role,
+
+                  content: m.content,
+
+                  sources: m.sources,
+
+                }))
+
+              );
+
+              setCurrentPage("chat");
+
+            }}
+          />
+        )}
+
+        {currentPage === "settings" && (
+          <EmployeeSettingsPage />
+        )}
+
+        {currentPage === "knowledge-base" && (
+          <KnowledgeBasePage />
+        )}
+
+        {currentPage === "analytics" && (
+          <AnalyticsPage />
+        )}
+
+
 
       </div>
 
-      {/* Upload notification */}
       <UploadStatus
         status={uploadStatus}
         fileName={uploadFileName}
-        chunkCount={uploadChunkCount}
         error={uploadError}
       />
-
     </div>
   );
 }

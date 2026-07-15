@@ -1,0 +1,26 @@
+[
+    {
+        "name": "Employee_Handbook.pdf",
+        "status": "Indexed",
+        "chunks": 55,
+        "size": 0.32
+    },
+    {
+        "name": "Employee_Training_Development_Manual.pdf",
+        "status": "Indexed",
+        "chunks": 24,
+        "size": 0.2
+    },
+    {
+        "name": "HR_Policy_Manual.pdf",
+        "status": "Indexed",
+        "chunks": 30,
+        "size": 0.34
+    },
+    {
+        "name": "IT_Security_Guide.pdf",
+        "status": "Indexed",
+        "chunks": 45,
+        "size": 0.27
+    }
+]

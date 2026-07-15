@@ -8,10 +8,13 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 # Import the os module for working with files and folders
 import os
+import json
+from chatbot.paths import DATA_FOLDER
+from chatbot.paths import VECTOR_DB_PATH
 
 #document loader and reader for the PDF file
 # Folder containing all PDF documents
-pdf_folder = "data"
+pdf_folder = DATA_FOLDER
 # Get all PDF files from the folder
 pdf_files = [
     file
@@ -24,10 +27,11 @@ pdf_files = [
 all_chunks = []
 # Store metadata for all chunks
 all_metadata = []
+document_metadata = []
 # Number of characters in each chunk
-chunk_size = 200
+chunk_size = 500
 # Number of overlapping characters between consecutive chunks
-chunk_overlap = 50
+chunk_overlap = 100
 # Create a text splitter object
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=chunk_size,
@@ -67,6 +71,19 @@ for pdf_file in pdf_files:
     all_metadata.extend(pdf_metadata)
     # Display the number of chunks created from this PDF
     print(f"{pdf_file}: {len(pdf_chunks)} chunks created")
+    file_size = round(
+      os.path.getsize(pdf_path) / (1024 * 1024),
+      2
+    )
+
+    document_metadata.append(
+      {
+        "name": pdf_file,
+        "status": "Indexed",
+        "chunks": len(pdf_chunks),
+        "size": file_size
+      }
+    )
 # Display the complete document
 #print(document_text)
 
@@ -107,7 +124,7 @@ print(f"Embedding Dimension: {len(embeddings[0])}")
 #print(embeddings[0])
 
 # Create a ChromaDB client
-client = chromadb.PersistentClient(path="vector_db")
+client = chromadb.PersistentClient(path=VECTOR_DB_PATH)
 # Delete the existing collection if it already exists
 try:
     client.delete_collection(name="employee_handbook")
@@ -131,3 +148,17 @@ collection.add(
 )
 # Display a success message
 print("\nEmbeddings successfully stored in ChromaDB!")
+metadata_file = os.path.join(
+    DATA_FOLDER,
+    "document_metadata.json"
+)
+
+with open(metadata_file, "w") as file:
+
+    json.dump(
+        document_metadata,
+        file,
+        indent=4
+    )
+
+print("Document metadata saved successfully.")

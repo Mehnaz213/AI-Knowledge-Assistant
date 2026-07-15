@@ -2,30 +2,63 @@
 from langchain_community.document_loaders import PyPDFLoader
 # Split long text into chunks
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-# Create embeddings for text
-from langchain_openai import OpenAIEmbeddings
-# Store embeddings in ChromaDB
-from langchain_chroma import Chroma
-
-# Create embedding model
-def create_embeddings():
-    # Create OpenAI embedding model
-    embeddings = OpenAIEmbeddings()
-    # Return embedding model
-    return embeddings
+# Import OS module
+import os
+# Import the Sentence Transformer class
+from sentence_transformers import SentenceTransformer
+# Import the ChromaDB client
+import chromadb
+# Import the uuid module for generating unique IDs
+import uuid
+from chatbot.paths import VECTOR_DB_PATH
 
 # Create ChromaDB vector database
 def create_vector_store(chunks):
-    # Create embedding model
-    embeddings = create_embeddings()
-    # Create ChromaDB and store the chunks
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory="chroma_db"
+    # Load the same embedding model used everywhere else
+    embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+    # Convert every chunk into an embedding vector
+    embeddings = embedding_model.encode(
+        [chunk.page_content for chunk in chunks]
     )
-    # Return the vector database
-    return vector_store
+    # Connect to the existing ChromaDB database
+    client = chromadb.PersistentClient(
+        path=VECTOR_DB_PATH
+    )
+    # Open the existing collection
+    collection = client.get_or_create_collection(
+        name="employee_handbook"
+    )
+    # Create a list to store metadata for all chunks
+    metadatas = []
+    # Process every chunk
+    for chunk in chunks:
+        # Make a copy of the chunk's metadata
+        metadata = chunk.metadata.copy()
+        # Store only the PDF filename
+        metadata["source"] = os.path.basename(
+            metadata["source"]
+        )
+        # Add metadata to the list
+        metadatas.append(metadata)
+
+    # Store every chunk inside ChromaDB
+    collection.add(
+    # Create a unique ID for every chunk
+        ids=[
+        str(uuid.uuid4())
+        for chunk in chunks
+        ],
+        # Store the text of every chunk
+        documents=[
+           chunk.page_content
+           for chunk in chunks
+        ],
+        # Store the embedding vectors
+        embeddings=embeddings.tolist(),
+        # Store the metadata of every chunk
+        metadatas=metadatas
+    )
+    return collection
 
 # Complete PDF processing pipeline
 def ingest_pdf(pdf_path):
