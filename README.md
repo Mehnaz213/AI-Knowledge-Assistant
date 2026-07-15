@@ -159,42 +159,55 @@ Administrators can manage users, upload organizational documents, monitor analyt
 
 # 📸 Screenshots
 
-## Login Page
+## 🔐 Login
 
 ![Login](assets/login.png)
 
 ---
 
-## Chat Interface
+## 💬 AI Chat
 
 ![Chat](assets/chat.png)
 
 ---
 
-## Chat History
+## 🕒 Chat History
+
+Search, rename, export, and delete previous conversations.
 
 ![History](assets/history.png)
 
 ---
 
-## Knowledge Base
+## ⚙️ Settings
+
+### Profile Information
+
+![Profile](assets/settings-profile.png)
+
+### Change Password
+
+![Password](assets/settings-password.png)
+
+### User Management (Admin)
+
+![User Management](assets/settings-user-management.png)
+
+---
+
+## 📚 Knowledge Base
+
+Upload PDFs, view indexed documents, monitor chunk count, and manage the enterprise knowledge base.
 
 ![Knowledge Base](assets/knowledge-base.png)
 
 ---
 
-## Analytics Dashboard
+## 📊 Analytics Dashboard
+
+Monitor users, conversations, messages, and recent activity.
 
 ![Analytics](assets/analytics.png)
-
----
-
-## Settings
-
-![Settings](assets/settings.png)
-
----
-
 # 📂 Project Structure
 
 ```text
