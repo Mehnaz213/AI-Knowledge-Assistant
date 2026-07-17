@@ -1,55 +1,63 @@
+# Import OpenAI client
+from openai import OpenAI
+
+# Load environment variables
+from dotenv import load_dotenv
+
+# Import os module
 import os
 
-from dotenv import load_dotenv
-from google import genai
-from google.genai.errors import ClientError
-
+# Read the .env file
 load_dotenv()
 
-API_KEY = os.getenv("GOOGLE_API_KEY")
-MODEL = os.getenv("MODEL_NAME", "gemini-flash-latest")
-print("MODEL =", MODEL)
+# Read OpenRouter API Key
+api_key = os.getenv("OPENROUTER_API_KEY")
 
-client = genai.Client(api_key=API_KEY)
+# Read OpenRouter model name
+model = os.getenv("OPENROUTER_MODEL")
 
+# Create OpenRouter client
+client = OpenAI(
+    api_key=api_key,
+    base_url="https://openrouter.ai/api/v1"
+)
 
+# Generate AI Response
 def generate_response(
     system_prompt: str,
     user_prompt: str
 ):
     """
-    Generates a response using Google Gemini.
+    Sends a prompt to the LLM
+    and returns the generated response.
     """
 
-    try:
-        response = client.models.generate_content(
-            model=MODEL,
-            contents=f"""
-SYSTEM INSTRUCTIONS
+    # Generate response using OpenRouter
+    response = client.chat.completions.create(
 
-{system_prompt}
+        # AI Model
+        model=model,
 
-----------------------------------------
+        # Lower temperature for consistent responses
+        temperature=0,
 
-USER REQUEST
+        # Conversation messages
+        messages=[
 
-{user_prompt}
-"""
-        )
+            # System Prompt
+            {
+                "role": "system",
+                "content": system_prompt
+            },
 
-        return response.text.strip()
+            # User Prompt
+            {
+                "role": "user",
+                "content": user_prompt
+            }
 
-    except ClientError as e:
-        print("Gemini API Error:", e)
+        ]
+    )
 
-        return (
-            "⚠️ The AI service is temporarily unavailable because the API quota "
-            "has been reached. Please try again after a short while."
-        )
-
-    except Exception as e:
-        print("Unexpected Error:", e)
-
-        return (
-            "⚠️ An unexpected error occurred while generating the response."
-        )
+    # Return only the generated text
+    return response.choices[0].message.content

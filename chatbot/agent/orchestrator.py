@@ -1,9 +1,6 @@
 # Import planner
 from chatbot.agent.planner import classify_intent
 
-from chatbot.agent.reflection import reflect_response
-from chatbot.llm import generate_response
-
 # Import tools
 from chatbot.agent.tools import (
     knowledge_search_tool,
@@ -20,8 +17,6 @@ def process_user_request(
 
     user_query: str,
 
-    conversation_messages: list | None = None,
-
     previous_output: str | None = None
 
 ):
@@ -30,13 +25,7 @@ def process_user_request(
     steps = []
 
     # Generate execution plan
-    plan = classify_intent(
-
-       user_query=user_query,
-
-       conversation_messages=conversation_messages or []
-
-    )
+    plan = classify_intent(user_query)
 
     # Store results
     current_output = None
@@ -56,6 +45,8 @@ def process_user_request(
             current_output=knowledge_search_tool(
                 user_query,
 
+               previous_output=current_output or previous_output
+
             )
 
         # Leave Generator
@@ -67,6 +58,8 @@ def process_user_request(
 
                user_query,
 
+               previous_output=current_output or previous_output
+
             )
 
         # Email Generator
@@ -76,6 +69,8 @@ def process_user_request(
 
             current_output= email_generation_tool(
                 user_query,
+
+               previous_output=current_output or previous_output
 
             )
 
@@ -87,6 +82,8 @@ def process_user_request(
             current_output= summarization_tool(
                 user_query,
 
+               previous_output=current_output or previous_output
+
             )
 
         # Rewrite
@@ -96,6 +93,8 @@ def process_user_request(
 
             current_output= rewrite_tool(
                 user_query,
+
+               previous_output=current_output or previous_output
 
             )
 
@@ -107,44 +106,10 @@ def process_user_request(
             current_output = comparison_tool(
                 user_query,
 
+               previous_output=current_output or previous_output
 
             )
-        
-        elif tool == "general_chat":
 
-            steps.append("Generating Response")
-
-            current_output = generate_response(
-               "You are a helpful AI assistant.",
-               user_query
-            )
-
-    reflection = reflect_response(
-    tools=[item["tool"] for item in plan],
-    result=current_output
-    )
-    print("Reflection:", reflection)
-    steps.append(
-       reflection.get(
-        "message",
-        "Reflection completed."
-       )
-    )
-    if reflection.get("needs_followup", False):
-
-       return {
-
-          "tools": [
-            item["tool"]
-            for item in plan
-           ],
-
-          "steps": steps,
-
-          "result": reflection.get("followup_question", "")
-
-       }
-    
     return {
 
       "tools": [

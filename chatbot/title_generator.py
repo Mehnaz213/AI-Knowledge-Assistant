@@ -1,28 +1,62 @@
-from chatbot.llm import generate_response
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+client = OpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1"
+)
+
+MODEL = os.getenv("OPENROUTER_MODEL")
 
 
-def generate_title(first_message: str) -> str:
-    """
-    Generates a short conversation title.
-    """
+def generate_title(question: str):
 
-    system_prompt = """
-You generate short chat titles.
+    response = client.chat.completions.create(
+        model=MODEL,
+        temperature=0,
+        messages=[
+            {
+                "role": "system",
+                "content": """
+Generate a short conversation title.
 
 Rules:
+
 - Maximum 5 words.
+- No punctuation.
 - No quotation marks.
-- No punctuation at the end.
+- Title Case.
 - Return only the title.
+
+Examples:
+
+Question:
+What is the leave policy?
+
+Output:
+Leave Policy
+
+Question:
+Explain the dress code.
+
+Output:
+Dress Code
+
+Question:
+Tell me about reimbursement rules.
+
+Output:
+Expense Reimbursement
 """
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
+    )
 
-    try:
-        title = generate_response(
-            system_prompt=system_prompt,
-            user_prompt=first_message
-        )
-
-        return title.strip()
-
-    except Exception:
-        return first_message[:40]
+    return response.choices[0].message.content.strip()

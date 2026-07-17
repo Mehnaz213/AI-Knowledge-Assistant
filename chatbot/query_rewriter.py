@@ -1,94 +1,71 @@
-from chatbot.llm import generate_response
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+client = OpenAI(
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    base_url="https://openrouter.ai/api/v1"
+)
+
+MODEL = os.getenv("OPENROUTER_MODEL")
 
 
-def rewrite_query(
-    question: str,
-    conversation_messages: list
-):
-    """
-    Rewrites ambiguous questions by using previous
-    conversation only for resolving references.
-    """
+def rewrite_query(question: str, history: list):
 
-    if len(conversation_messages) == 0:
+    if len(history) == 0:
         return question
 
-    history = ""
+    messages = [
+        {
+            "role": "system",
+            "content": """
+You rewrite follow-up questions.
 
-    for message in conversation_messages[-6:]:
+Your job is ONLY to rewrite the user's latest question
+into a standalone question.
 
-        history += (
-            f'{message["role"]}: '
-            f'{message["content"]}\n'
-        )
+Do not answer.
 
-    system_prompt = """
-You are a Query Rewriter.
-
-Your ONLY job is to rewrite ambiguous user questions.
+Only return the rewritten question.
 
 Examples:
 
-User:
-How many days?
+History:
+What is Kubernetes?
 
-Rewrite:
-How many days of annual leave are provided?
+Question:
+Who created it?
 
-----------------------------
+Output:
+Who created Kubernetes?
 
-User:
-What about maternity leave?
+History:
+Explain the leave policy.
 
-Rewrite:
-What is the maternity leave policy?
+Question:
+Who is eligible for it?
 
-----------------------------
-
-Rules:
-
-1. NEVER answer the question.
-
-2. NEVER ask follow-up questions.
-
-3. NEVER explain anything.
-
-4. NEVER add information.
-
-5. ONLY resolve references like:
-
-- it
-- this
-- that
-- they
-- those
-- him
-- her
-
-6. If the question is already clear,
-return it unchanged.
-
-Return ONLY the rewritten question.
+Output:
+Who is eligible for the leave policy?
 """
+        }
+    ]
 
-    prompt = f"""
-Conversation History
+    messages.extend(history)
 
-{history}
-
-Current Question
-
-{question}
-"""
-
-    rewritten = generate_response(
-        system_prompt,
-        prompt
+    messages.append(
+        {
+            "role": "user",
+            "content": question
+        }
     )
 
-    rewritten = rewritten.strip()
+    response = client.chat.completions.create(
+        model=MODEL,
+        messages=messages,
+        temperature=0
+    )
 
-    if len(rewritten) == 0:
-        return question
-
-    return rewritten
+    return response.choices[0].message.content.strip()

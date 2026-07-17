@@ -9,7 +9,6 @@ from chatbot.paths import VECTOR_DB_PATH
 import os
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
-import re
 
 # Load embedding model
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -19,7 +18,7 @@ reranker_model = CrossEncoder(
 )
 
 # Retrieve more candidates
-TOP_K = 15
+TOP_K = 10
 
 # Connect to ChromaDB
 client = chromadb.PersistentClient(path=VECTOR_DB_PATH)
@@ -72,15 +71,8 @@ def retrieve_context(query, source=None):
     if detected:
       source = detected
     # Improve semantic retrieval a little
-    enhanced_query = (
-       query
-       .strip()
-       .replace("\n", " ")
-    )
-    query_tokens = re.findall(
-       r"\w+",
-       enhanced_query.lower()
-    )
+    enhanced_query = f"{query} {query.lower()}"
+    query_tokens = enhanced_query.lower().split()
 
     keyword_scores = bm25.get_scores(query_tokens)
 
@@ -88,7 +80,7 @@ def retrieve_context(query, source=None):
        range(len(keyword_scores)),
        key=lambda i: keyword_scores[i],
        reverse=True
-    )[:10]
+    )[:5]
 
     query_embedding = embedding_model.encode(enhanced_query)
 
@@ -154,10 +146,6 @@ def retrieve_context(query, source=None):
     ]
 
     scores = reranker_model.predict(pairs)
-    best_score = max(scores)
-    print(f"Best CrossEncoder Score: {best_score:.3f}")
-
-    print(f"\nBest Retrieval Score: {best_score}\n")
     print("Cross Encoder Scores")
 
     for (chunk, meta), score in zip(combined, scores):
@@ -168,19 +156,9 @@ def retrieve_context(query, source=None):
        key=lambda x: x[1],
        reverse=True
     )
-    print("\nBEST CHUNK")
-    print(scored_results[0][0][0][:800])
-    print("Score:", scored_results[0][1])
-    # If even the best chunk is not relevant,
-    # return no context.
-    if best_score < 0:
-
-      print("No sufficiently relevant document found.")
-
-      return "", []
 
     # Reject irrelevant retrievals
-    THRESHOLD = 0.35
+    THRESHOLD = -2.0
 
     ranked_pairs = [
       item[0]
@@ -218,27 +196,10 @@ def retrieve_context(query, source=None):
                 }
             )
 
-    if not ranked_pairs:
-
-       print("No relevant chunks after reranking.")
-
+    if len(ranked_pairs) == 0:
        return "", []
 
-    formatted_chunks = []
-
-    for index, chunk in enumerate(retrieved_chunks, start=1):
-
-       formatted_chunks.append(
-          f"""
-    ==================== DOCUMENT {index} ====================
-
-    {chunk}
-
-    ----------------------------------------------------
-    """
-       )
-
-    context = "\n".join(formatted_chunks)
+    context = "\n\n".join(retrieved_chunks)
 
     print("\n" + "=" * 80)
     print("RETRIEVED CONTEXT")
