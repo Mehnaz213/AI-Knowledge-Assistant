@@ -1,5 +1,5 @@
-# Import OpenAI client
-from openai import OpenAI
+from google import genai
+from google.genai import types
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -10,16 +10,11 @@ import os
 # Read the .env file
 load_dotenv()
 
-# Read OpenRouter API Key
-api_key = os.getenv("OPENROUTER_API_KEY")
-
 # Read OpenRouter model name
-model = os.getenv("OPENROUTER_MODEL")
+model = os.getenv("MODEL_NAME")
 
-# Create OpenRouter client
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://openrouter.ai/api/v1"
+client = genai.Client(
+    api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 # Generate AI Response
@@ -32,32 +27,19 @@ def generate_response(
     and returns the generated response.
     """
 
-    # Generate response using OpenRouter
-    response = client.chat.completions.create(
+    response = client.models.generate_content(
+       model=model,
+       contents=f"""
+    SYSTEM:
 
-        # AI Model
-        model=model,
+    {system_prompt}
 
-        # Lower temperature for consistent responses
-        temperature=0,
+    USER:
 
-        # Conversation messages
-        messages=[
-
-            # System Prompt
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-
-            # User Prompt
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-
-        ]
+    {user_prompt}
+    """,
+        config=types.GenerateContentConfig(
+          temperature=0
+        )
     )
-
-    # Return only the generated text
-    return response.choices[0].message.content
+    return response.text.strip()

@@ -12,6 +12,7 @@ from chatbot.agent.tools import (
 )
 
 
+
 # Process user request
 def process_user_request(
 
@@ -67,11 +68,9 @@ def process_user_request(
 
             steps.append("Generating Email")
 
-            current_output= email_generation_tool(
-                user_query,
-
+            current_output = email_generation_tool(
+               user_query,
                previous_output=current_output or previous_output
-
             )
 
         # Summary

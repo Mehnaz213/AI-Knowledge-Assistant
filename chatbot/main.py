@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 # Import BaseModel from Pydantic
 import time
 from pydantic import BaseModel
-# OpenRouter Client
-from openai import OpenAI
+from google import genai
+from google.genai import types
 # Load environment variables
 from dotenv import load_dotenv
 # Read environment variables
@@ -58,6 +58,7 @@ import shutil
 import subprocess
 # Import Agent Orchestrator
 from chatbot.agent.orchestrator import process_user_request
+from chatbot.agent.prompts import get_system_prompt
 
 DATA_FOLDER = "data"
 # Create FastAPI app
@@ -80,66 +81,11 @@ app.add_middleware(
 
 # Load .env file
 load_dotenv()
-# Read API Key
-api_key = os.getenv("OPENROUTER_API_KEY")
-# Read Model Name
-model = os.getenv("OPENROUTER_MODEL")
+model = os.getenv("MODEL_NAME")
 
-# Create OpenRouter Client
-client = OpenAI(
-    api_key=api_key,
-    base_url="https://openrouter.ai/api/v1"
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
-
-# Store conversation history
-chat_history = [
-    {
-        "role": "system",
-        "content": """
-You are an Enterprise AI Knowledge Assistant.
-
-Your job is to answer ONLY using the retrieved document context.
-
-Rules:
-
-Prefer answering from uploaded documents.
-
-If the uploaded documents contain enough information,
-use only those documents.
-
-If they contain only partial information,
-answer from the document first.
-
-Then provide a separate section titled:
-
-## General Explanation (Not from uploaded documents)
-
-If no relevant document exists,
-clearly state that the answer comes from general knowledge.
-
-Formatting Rules:
-
-• Start with a short title if appropriate.
-• Write in professional business English.
-• Use headings where suitable.
-• Use bullet points instead of long paragraphs.
-• Convert tables into bullet lists.
-• Never copy raw PDF formatting.
-• Remove repeated words and broken symbols.
-• Highlight important numbers and policies using **bold**.
-• Keep answers concise and easy to read.
-• End naturally without mentioning the prompt or context.
-
-Return all responses in Markdown.
-Use:
-# for titles
-## for headings
-- for bullet points
-**bold** for important values
-Avoid plain text paragraphs whenever possible.
-"""
-    }
-]
 
 # Request Model
 class ChatRequest(BaseModel):
@@ -175,7 +121,7 @@ def about():
         "frontend": "Next.js",
         "backend": "Python",
         "database": "ChromaDB",
-        "AI Model": "OpenRouter"
+        "AI Model": "Gemini"
     }
 # Download PDF
 @app.get("/download/{filename}")
@@ -525,6 +471,14 @@ def chat(
     # Get the final agent result
     result = agent_response["result"]
 
+    generation_mode = agent_response.get(
+      "generation_mode"
+    )
+    system_prompt = get_system_prompt(
+    tools,
+    generation_mode
+    )
+
     # If Knowledge Search is NOT required,
     # save the response and return it.
     if "knowledge_search" not in tools:
@@ -652,94 +606,73 @@ def chat(
 
     # Add prompt depending on whether document context exists
     messages = [
-
-    {
+      {
         "role": "system",
-        "content": chat_history[0]["content"]
-    }
-
+        "content": system_prompt
+      }
     ]
 
     messages.extend(conversation_messages)
 
     if has_context:
 
-       messages.append(
-     {
-       "role": "user",
-       "content": f"""
+       messages.append({
+        "role": "user",
+        "content": f"""
        Document Context:
 
-      {context}
+       {context}
 
-      Previous Conversation:
+       Previous Conversation:
 
-      {conversation_messages}
+       {conversation_messages}
 
-      Current User Question:
+       Current User Question:
 
-      {original_question}
+       {original_question}
 
-      Instructions:
+       Instructions:
 
-      1. Use the Document Context as the primary source.
-
-      2. Use the Previous Conversation only to resolve references like:
-      - it
-      - they
-      - this
-      - that
-      - those
-      - he
-      - she
-
-      3. If the answer can be inferred from multiple document chunks,
-      combine them into one answer.
-
-      4. Do NOT require an exact sentence match.
-
-      5. Only reply
-
-      The requested information is not available in the provided document.
-
-      when the retrieved document contains absolutely no relevant information.
-
-      Return the answer in clean Markdown.
-      """
-      }
-    )
+       - Use the document context as the primary source.
+       - Use previous conversation only to resolve references.
+       - If information is incomplete, supplement only the missing part with general knowledge.
+       """
+       })
     else:
 
-      messages.append(
-        {
-            "role": "user",
-            "content": f"""
-        Previous Conversation:
+      messages.append({
+    "role": "user",
+    "content": f"""
+Previous Conversation:
 
-        {conversation_messages}
+{conversation_messages}
 
-        Current User Question:
+Current User Question:
 
-        {original_question}
+{original_question}
 
-        Instructions:
+No relevant information was found in the uploaded documents.
 
-        - Use the previous conversation for context.
-        - No relevant information was found in the uploaded documents.
-        - Answer using your general knowledge.
-        - Clearly mention that the answer is not taken from the uploaded documents.
-        - Return the answer in clean Markdown.
-        """
-        }
-    )
+Answer using general knowledge.
+Use previous conversation only to resolve references.
+"""
+})
     # Generate AI response
-    response = client.chat.completions.create(
-    model=model,
-    messages=messages,
-    temperature=0
+    prompt = ""
+
+    for message in messages:
+      role = message["role"].upper()
+      prompt += f"{role}:\n{message['content']}\n\n"
+
+    response = client.models.generate_content(
+      model=model,
+      contents=prompt,
+      config=types.GenerateContentConfig(
+        temperature=0
+      )
     )
-    # Extract AI response
-    ai_response = response.choices[0].message.content
+
+    ai_response = response.text.strip()
     if conversation:
 
       assistant_message = Message(

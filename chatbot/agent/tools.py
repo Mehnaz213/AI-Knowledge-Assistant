@@ -4,11 +4,12 @@ from chatbot.llm import generate_response
 # Import prompts
 from chatbot.agent.prompts import (
     LEAVE_SYSTEM_PROMPT,
-    EMAIL_SYSTEM_PROMPT,
+    EMAIL_TEMPLATE_PROMPT,
     COMPARISON_SYSTEM_PROMPT,
     SUMMARY_SYSTEM_PROMPT,
     REWRITE_SYSTEM_PROMPT,
 )
+
 
 # Build prompt using previous tool output
 def build_prompt(
@@ -20,20 +21,21 @@ def build_prompt(
     if previous_output:
 
         return f"""
-      User Request:
+User Request:
 
-      {user_query}
+{user_query}
 
-      Context:
+Context:
 
-      {previous_output}
+{previous_output}
 
-      Task:
+Task:
 
-      {task}
-       """
+{task}
+"""
 
     return user_query
+
 
 # Knowledge Search Tool
 def knowledge_search_tool(
@@ -51,23 +53,15 @@ def leave_application_tool(
     previous_output=None
 ):
 
-    # If previous tool produced output,
     prompt = build_prompt(
-
-      user_query,
-
-      previous_output,
-
-      "Generate ONLY the leave application."
-
+        user_query,
+        previous_output,
+        "Generate ONLY the leave application."
     )
 
     return generate_response(
-
         LEAVE_SYSTEM_PROMPT,
-
         prompt
-
     )
 
 
@@ -78,21 +72,14 @@ def email_generation_tool(
 ):
 
     prompt = build_prompt(
-
-      user_query,
-
-      previous_output,
-
-      "Generate ONLY the email."
-
+        user_query,
+        previous_output,
+        "Generate ONLY the email."
     )
 
     return generate_response(
-
-        EMAIL_SYSTEM_PROMPT,
-
+        EMAIL_TEMPLATE_PROMPT,
         prompt
-
     )
 
 
@@ -103,21 +90,14 @@ def summarization_tool(
 ):
 
     prompt = build_prompt(
-
-      user_query,
-
-      previous_output,
-
-      "Generate ONLY the summary."
-
+        user_query,
+        previous_output,
+        "Generate ONLY the summary."
     )
 
     return generate_response(
-
         SUMMARY_SYSTEM_PROMPT,
-
         prompt
-
     )
 
 
@@ -128,20 +108,14 @@ def rewrite_tool(
 ):
 
     prompt = build_prompt(
-
-      user_query,
-
-      previous_output,
-
-      "Rewrite the text professionally."
+        user_query,
+        previous_output,
+        "Rewrite the text professionally."
     )
 
     return generate_response(
-
         REWRITE_SYSTEM_PROMPT,
-
         prompt
-
     )
 
 
@@ -151,28 +125,13 @@ def comparison_tool(
     previous_output=None
 ):
 
-    if previous_output:
-
-        prompt = f"""
-User Request:
-
-{user_query}
-
-Context:
-
-{previous_output}
-
-Generate ONLY the comparison.
-"""
-
-    else:
-
-        prompt = user_query
+    prompt = build_prompt(
+        user_query,
+        previous_output,
+        "Generate ONLY the comparison."
+    )
 
     return generate_response(
-
         COMPARISON_SYSTEM_PROMPT,
-
         prompt
-
     )

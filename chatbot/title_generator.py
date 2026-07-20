@@ -1,62 +1,69 @@
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
-MODEL = os.getenv("OPENROUTER_MODEL")
+MODEL = os.getenv("MODEL_NAME")
 
 
 def generate_title(question: str):
 
-    response = client.chat.completions.create(
-        model=MODEL,
-        temperature=0,
-        messages=[
-            {
-                "role": "system",
-                "content": """
-Generate a short conversation title.
+    response = client.models.generate_content(
+       model=MODEL,
+       contents=f"""
+    Generate a short conversation title.
 
-Rules:
+    Rules:
 
-- Maximum 5 words.
-- No punctuation.
-- No quotation marks.
-- Title Case.
-- Return only the title.
+    - Maximum 5 words.
+    - Use Title Case.
+    - No punctuation.
+    - No quotation marks.
+    - Do not use verbs like Explain, Tell, Describe, What Is, How To.
+    - Return only the main topic of the conversation.
 
-Examples:
+    Examples:
 
-Question:
-What is the leave policy?
+    Question:
+    What is the leave policy?
 
-Output:
-Leave Policy
+    Output:
+    Leave Policy
 
-Question:
-Explain the dress code.
+    Question:
+    Explain the dress code.
 
-Output:
-Dress Code
+    Output:
+    Dress Code
 
-Question:
-Tell me about reimbursement rules.
+    Question:
+    Tell me about reimbursement rules.
 
-Output:
-Expense Reimbursement
-"""
-            },
-            {
-                "role": "user",
-                "content": question
-            }
-        ]
+    Output:
+    Expense Reimbursement
+
+    Question:
+    How does attendance tracking work?
+
+    Output:
+    Attendance Tracking
+
+    Question:
+    What are the IT security guidelines?
+
+    Output:
+    IT Security Guidelines
+    Question:
+    {question}
+    """,
+       config=types.GenerateContentConfig(
+         temperature=0
+       )
     )
-
-    return response.choices[0].message.content.strip()
+    return response.text.strip()

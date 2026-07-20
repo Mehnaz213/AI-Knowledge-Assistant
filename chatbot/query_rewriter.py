@@ -1,15 +1,15 @@
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1"
+client = genai.Client(
+    api_key=os.getenv("GOOGLE_API_KEY")
 )
 
-MODEL = os.getenv("OPENROUTER_MODEL")
+MODEL = os.getenv("MODEL_NAME")
 
 
 def rewrite_query(question: str, history: list):
@@ -17,55 +17,37 @@ def rewrite_query(question: str, history: list):
     if len(history) == 0:
         return question
 
-    messages = [
-        {
-            "role": "system",
-            "content": """
-You rewrite follow-up questions.
+    history_text = ""
 
-Your job is ONLY to rewrite the user's latest question
-into a standalone question.
+    for msg in history:
+        history_text += f"{msg['role']}: {msg['content']}\n"
 
-Do not answer.
+    prompt = f"""
+    You rewrite follow-up questions.
 
-Only return the rewritten question.
+    Your job is ONLY to rewrite the user's latest question
+    into a standalone question.
 
-Examples:
+    Do not answer.
 
-History:
-What is Kubernetes?
+    Only return the rewritten question.
 
-Question:
-Who created it?
+    Conversation History:
 
-Output:
-Who created Kubernetes?
+    {history_text}
 
-History:
-Explain the leave policy.
+    Latest Question:
 
-Question:
-Who is eligible for it?
+    {question}
 
-Output:
-Who is eligible for the leave policy?
-"""
-        }
-    ]
-
-    messages.extend(history)
-
-    messages.append(
-        {
-            "role": "user",
-            "content": question
-        }
-    )
-
-    response = client.chat.completions.create(
-        model=MODEL,
-        messages=messages,
+    Return ONLY the rewritten standalone question.
+    """
+    response = client.models.generate_content(
+       model=MODEL,
+       contents=prompt,
+       config=types.GenerateContentConfig(
         temperature=0
+       )
     )
 
-    return response.choices[0].message.content.strip()
+    return response.text.strip()

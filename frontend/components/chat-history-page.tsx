@@ -326,7 +326,7 @@ export default function ChatHistoryPage({
                 {conversations.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-20">
 
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-400 to-cyan-400 glow flex items-center justify-center mb-6">
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-400 to-cyan-400 flex items-center justify-center mb-6">
                             <MessageSquare className="w-8 h-8 text-white" />
                         </div>
 

@@ -253,30 +253,6 @@ html {
     animation: float 6s ease-in-out infinite;
   }
 
-  @keyframes glow {
-    0% {
-      box-shadow:
-        0 0 10px rgba(34, 195, 255, .2),
-        0 0 20px rgba(34, 195, 255, .08);
-    }
-
-    50% {
-      box-shadow:
-        0 0 35px rgba(34, 195, 255, .55),
-        0 0 60px rgba(34, 195, 255, .15);
-    }
-
-    100% {
-      box-shadow:
-        0 0 10px rgba(34, 195, 255, .2),
-        0 0 20px rgba(34, 195, 255, .08);
-    }
-  }
-
-  .glow {
-    animation: glow 3s ease-in-out infinite;
-  }
-
   @keyframes fadeUp {
     from {
       opacity: 0;

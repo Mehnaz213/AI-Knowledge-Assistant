@@ -129,7 +129,7 @@ export default function AdminDashboard() {
               <div key={stat.label} className="glass-elevated hover-lift smooth-transition p-6 rounded-xl">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-medium text-muted-foreground">{stat.label}</h3>
-                  <div className="p-2 rounded-lg bg-primary/10 glow">
+                  <div className="p-2 rounded-lg bg-primary/10">
                     <stat.icon className="w-5 h-5 text-primary" />
                   </div>
                 </div>
