@@ -140,7 +140,7 @@ The agent selects the appropriate document generation tool automatically based o
 
 ### ⚡ Multi-Step Execution
 
-Example:
+### Example 1:
 
 ```text
 User
@@ -165,7 +165,7 @@ Email Generation
 
 Final Response
 ```
-### Example
+### Example 2:
 
 ```text
 User
